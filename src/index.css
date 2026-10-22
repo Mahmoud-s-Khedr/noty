@@ -309,3 +309,45 @@ dialog.confirm .actions { display: flex; justify-content: flex-end; gap: 0.5rem;
   .ProseMirror img { max-width: 100%; break-inside: avoid; }
   .ProseMirror p.is-editor-empty:first-child::before { display: none; }
 }
+
+/* Tables keep their column widths inside the note's scrollable viewport. */
+.sheet, .tiptap, .tiptap > div { min-width: 0; }
+.ProseMirror .tableWrapper { max-width: 100%; overflow-x: auto; margin: 1em 0; }
+.ProseMirror table { border-collapse: collapse; table-layout: fixed; margin: 0; }
+.ProseMirror td, .ProseMirror th {
+  border: 1px solid var(--hairline); padding: 0.5rem 0.625rem;
+  vertical-align: top; position: relative; overflow-wrap: anywhere; min-width: 80px;
+  text-align: left; font-weight: inherit;
+}
+.ProseMirror th { background: var(--hover); font-weight: 650; }
+.ProseMirror td > *, .ProseMirror th > * { max-width: 100%; }
+.ProseMirror td pre, .ProseMirror th pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ProseMirror .selectedCell::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--focus) 18%, transparent); pointer-events: none; }
+.ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: var(--focus); pointer-events: none; z-index: 2; }
+.ProseMirror.resize-cursor { cursor: col-resize; }
+.table-options { max-width: 100%; border: 1px solid var(--hairline); border-radius: 0.4rem; background: var(--raised); padding: 0.25rem; font-size: 0.8125rem; }
+.table-dialog label { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0; }
+.table-dialog input[type='number'] { width: 6rem; background: var(--page); border: 1px solid var(--hairline); border-radius: 0.4rem; padding: 0.375rem; }
+.table-dialog label.header-choice { justify-content: flex-start; gap: 0.5rem; }
+.asset-image { position: relative; width: fit-content; max-width: 100%; }
+.image-enlarge { display: none; }
+.ProseMirror :is(td, th) .asset-image img { max-width: min(120px, 100%); max-height: 80px; min-height: 0; width: auto; height: auto; object-fit: contain; }
+.ProseMirror :is(td, th) .image-enlarge { display: block; margin-top: 0.25rem; border: 1px solid var(--hairline); background: var(--raised); color: var(--graphite); border-radius: 0.3rem; font: 500 0.75rem var(--ui); padding: 0.2rem 0.4rem; }
+dialog.image-preview { max-width: calc(100vw - 2rem); max-height: calc(100dvh - 2rem); padding: 1rem; border: 1px solid var(--hairline); border-radius: 0.75rem; background: var(--raised); color: var(--ink); }
+dialog.image-preview::backdrop { background: rgb(10 14 20 / 0.75); }
+.image-preview .btn { display: block; margin: 0 0 0.75rem auto; }
+.image-preview img { display: block; max-width: calc(100vw - 4rem); max-height: calc(100dvh - 7rem); object-fit: contain; }
+.print-document { display: none; }
+@media print {
+  .note-content { display: none; }
+  .print-document { display: block; }
+  .ProseMirror .tableWrapper { overflow: visible !important; max-width: none; }
+  .ProseMirror table { width: 100% !important; min-width: 0 !important; }
+  .ProseMirror col { min-width: 0 !important; }
+  .ProseMirror td, .ProseMirror th { min-width: 0; overflow-wrap: anywhere; }
+  .ProseMirror tr { break-inside: avoid; }
+  .ProseMirror thead { display: table-header-group; }
+  .image-enlarge, .ProseMirror .selectedCell::after { display: none !important; }
+  .ProseMirror img.ProseMirror-selectednode { outline: none; }
+  .ProseMirror :is(td, th) .asset-image img { max-width: 100%; max-height: none; }
+}

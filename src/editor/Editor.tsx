@@ -1,22 +1,36 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor, type Editor as TiptapEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import { Markdown } from '@tiptap/markdown'
 import Placeholder from '@tiptap/extension-placeholder'
 import type { Note } from '../db/db'
 import { addAsset, renameNote, saveNoteDoc } from '../db/notes'
 import { Icon } from '../ui/Icon'
 import { listDate, wordCount } from '../ui/format'
-import { AssetImage } from './AssetImage'
+import { editorExtensions } from './extensions'
+import { docToText } from './documentText'
 import { Toolbar } from './Toolbar'
 
 // JSZip + markdown conversion are only needed on click, so load them lazily (still precached for offline).
 const loadExport = () => import('../export/exportZip')
 
 async function insertImages(editor: TiptapEditor, noteId: string, files: File[]) {
-  for (const f of files) {
-    const assetId = await addAsset(noteId, f)
-    editor.chain().focus().insertContent({ type: 'image', attrs: { assetId, alt: '' } }).run()
+  let bookmark = editor.state.selection.getBookmark()
+  const mapPosition = ({ transaction }: { transaction: import('@tiptap/pm/state').Transaction }) => {
+    bookmark = bookmark.map(transaction.mapping)
+  }
+  editor.on('transaction', mapPosition)
+  try {
+    const ids = await Promise.all(files.map((f) => addAsset(noteId, f)))
+    if (editor.isDestroyed) return
+    const selection = bookmark.resolve(editor.state.doc)
+    const moved = !editor.state.selection.eq(selection)
+    editor.commands.insertContentAt(
+      { from: selection.from, to: selection.to },
+      ids.map((assetId) => ({ type: 'image', attrs: { assetId, alt: '' } })),
+      { updateSelection: !moved },
+    )
+    if (!moved) editor.commands.focus()
+  } finally {
+    editor.off('transaction', mapPosition)
   }
 }
 
@@ -47,11 +61,12 @@ export function NotePane({ note, focusTitle, onBack, onDelete, onExported, focus
   const dragDepth = useRef(0)
   const timer = useRef<number | undefined>(undefined)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+  const printRef = useRef<HTMLDivElement>(null)
   const noteId = note.id
 
   const editor = useEditor(
     {
-      extensions: [StarterKit, Markdown, AssetImage, Placeholder.configure({ placeholder: 'Start writing, or paste an image…' })],
+      extensions: [...editorExtensions(), Placeholder.configure({ placeholder: 'Start writing, or paste an image…' })],
       content: note.doc as object,
       editorProps: {
         handlePaste: (_view, e) => {
@@ -61,20 +76,22 @@ export function NotePane({ note, focusTitle, onBack, onDelete, onExported, focus
           insertImages(editorRef.current!, noteId, files)
           return true
         },
-        handleDrop: (_v, e) => {
+        handleDrop: (view, e) => {
           const files = imageFiles(e.dataTransfer?.files)
           if (!files.length) return false
           e.preventDefault()
-          insertImages(editorRef.current!, noteId, files)
+          const pos = view.posAtCoords({ left: e.clientX, top: e.clientY })
+          if (pos) editorRef.current!.commands.setTextSelection(pos.pos)
+          void insertImages(editorRef.current!, noteId, files)
           return true
         },
       },
       onUpdate: ({ editor }) => {
         setStatus('saving')
-        setWords(wordCount(editor.getText({ blockSeparator: ' ' })))
+        setWords(wordCount(docToText(editor.getJSON())))
         window.clearTimeout(timer.current)
         timer.current = window.setTimeout(async () => {
-          await saveNoteDoc(noteId, editor.getJSON(), editor.getText({ blockSeparator: '\n' }))
+          await saveNoteDoc(noteId, editor.getJSON(), docToText(editor.getJSON()))
           setStatus('saved')
         }, 400)
       },
@@ -96,22 +113,50 @@ export function NotePane({ note, focusTitle, onBack, onDelete, onExported, focus
       if (timer.current && editorRef.current && !editorRef.current.isDestroyed) {
         window.clearTimeout(timer.current)
         const ed = editorRef.current
-        void saveNoteDoc(noteId, ed.getJSON(), ed.getText({ blockSeparator: '\n' }))
+        void saveNoteDoc(noteId, ed.getJSON(), docToText(ed.getJSON()))
       }
     },
     [noteId],
   )
 
+  useEffect(() => {
+    if (!editor) return
+    const prepare = () => {
+      if (!printRef.current) return
+      // A print-only copy allows semantic repeating headers without mutating
+      // ProseMirror's editable tbody or generating an autosave transaction.
+      const copy = editor.view.dom.cloneNode(true) as HTMLElement
+      copy.removeAttribute('contenteditable')
+      copy.querySelectorAll('.image-enlarge, .column-resize-handle').forEach((el) => el.remove())
+      copy.querySelectorAll('table').forEach((table) => {
+        const first = table.rows[0]
+        if (first && Array.from(first.cells).every((cell) => cell.tagName === 'TH')) table.createTHead().append(first)
+        const columns = Array.from(table.querySelectorAll('col'))
+        const widths = columns.map((col) => parseFloat(col.style.width) || 160)
+        const total = widths.reduce((sum, width) => sum + width, 0)
+        columns.forEach((col, i) => { col.style.width = `${widths[i] / total * 100}%` })
+      })
+      printRef.current.replaceChildren(copy)
+    }
+    const clear = () => printRef.current?.replaceChildren()
+    window.addEventListener('beforeprint', prepare)
+    window.addEventListener('afterprint', clear)
+    return () => {
+      window.removeEventListener('beforeprint', prepare)
+      window.removeEventListener('afterprint', clear)
+    }
+  }, [editor])
+
   const exportThis = async () => {
     const m = await loadExport()
-    m.download(await m.exportNote(note), `${m.safeName(note.title)}.zip`)
+    m.download(await m.exportNote({ ...note, doc: editor?.getJSON() ?? note.doc }), `${m.safeName(note.title)}.zip`)
     onExported('a ZIP')
   }
 
   const exportDocx = async () => {
     const m = await import('../export/exportDocx')
     const { download, safeName } = await loadExport()
-    download(await m.exportDocx(note), `${safeName(note.title)}.docx`)
+    download(await m.exportDocx({ ...note, doc: editor?.getJSON() ?? note.doc }), `${safeName(note.title)}.docx`)
     onExported('a Word document')
   }
 
@@ -179,7 +224,8 @@ export function NotePane({ note, focusTitle, onBack, onDelete, onExported, focus
             }}
           />
           {editor && <Toolbar editor={editor} onImages={(files) => insertImages(editor, noteId, files)} />}
-          <EditorContent editor={editor} />
+          <EditorContent editor={editor} className="note-content" />
+          <div ref={printRef} className="print-document" aria-hidden="true" />
         </div>
       </div>
     </main>

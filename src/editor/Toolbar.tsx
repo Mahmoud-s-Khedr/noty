@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useEditorState, type Editor } from '@tiptap/react'
 import { Icon, type IconName } from '../ui/Icon'
+import { TableControls } from './TableControls'
 
 type Tool = { icon: IconName; label: string; active?: boolean; run: () => void; disabled?: boolean }
 
@@ -63,9 +64,10 @@ export function Toolbar({ editor, onImages }: { editor: Editor; onImages: (files
     <div className="toolbar" role="toolbar" aria-label="Formatting">
       {renderGroups(groups.slice(0, 3), 0)}
       <span className="tool-sep" aria-hidden="true" />
-      <button type="button" className="tool" aria-label="Insert image" title="Insert image" onClick={() => fileInput.current?.click()}>
+      <button type="button" className="tool" aria-label="Insert image" title="Insert image" onMouseDown={(e) => e.preventDefault()} onClick={() => fileInput.current?.click()}>
         <Icon name="image" />
       </button>
+      <TableControls editor={editor} />
       {renderGroups(groups.slice(3), 3)}
       <input
         ref={fileInput}

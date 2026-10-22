@@ -1,11 +1,12 @@
 import {
   Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType,
+  Table, TableRow, TableCell, WidthType, TableLayoutType, VerticalAlign,
   type FileChild, type ParagraphChild,
 } from 'docx'
 import type { JSONContent } from '@tiptap/react'
 import { db, type Note } from '../db/db'
 
-type Ctx = { images: Map<string, { data: Uint8Array; w: number; h: number; type: 'png' | 'jpg' | 'gif' | 'bmp' }> }
+type Ctx = { maxWidth?: number; images: Map<string, { data: Uint8Array; w: number; h: number; type: 'png' | 'jpg' | 'gif' | 'bmp' }> }
 
 const MAX_W = 600 // px, fits a page with default margins
 
@@ -33,7 +34,7 @@ function runs(node: JSONContent, ctx: Ctx): ParagraphChild[] {
     if (c.type === 'image') {
       const img = ctx.images.get(c.attrs?.assetId)
       if (!img) return []
-      const w = Math.min(img.w, MAX_W)
+      const w = Math.min(img.w, ctx.maxWidth ?? MAX_W)
       return [new ImageRun({ type: img.type, data: img.data, transformation: { width: w, height: Math.round((img.h * w) / img.w) } })]
     }
     if (c.type !== 'text') return runs(c, ctx)
@@ -48,6 +49,31 @@ function runs(node: JSONContent, ctx: Ctx): ParagraphChild[] {
 function blocks(nodes: JSONContent[], ctx: Ctx, o: { list?: { ordered: boolean; level: number }; quote?: boolean } = {}): FileChild[] {
   return nodes.flatMap((n): FileChild[] => {
     switch (n.type) {
+      case 'table': {
+        const rows = n.content ?? []
+        const widths = (rows[0]?.content ?? []).map((cell) => Number(cell.attrs?.colwidth?.[0]) || 160)
+        const total = widths.reduce((sum, w) => sum + w, 0) || 1
+        const columnWidths = widths.map((w) => Math.round(w / total * 9000))
+        return [new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          layout: TableLayoutType.FIXED,
+          columnWidths,
+          rows: rows.map((row) => new TableRow({
+            tableHeader: row.content?.every((cell) => cell.type === 'tableHeader'),
+            children: (row.content ?? []).map((cell, index) => {
+              const content = blocks(cell.content ?? [], { ...ctx, maxWidth: Math.max(1, widths[index] / total * MAX_W - 16) })
+              // Word requires a paragraph as the final child of each cell.
+              if (!(content.at(-1) instanceof Paragraph)) content.push(new Paragraph({}))
+              return new TableCell({
+                width: { size: columnWidths[index], type: WidthType.DXA },
+                verticalAlign: VerticalAlign.TOP,
+                shading: cell.type === 'tableHeader' ? { fill: 'EEEEEE' } : undefined,
+                children: content as (Paragraph | Table)[],
+              })
+            }),
+          })),
+        })]
+      }
       case 'paragraph':
         return [new Paragraph({
           children: runs(n, ctx),

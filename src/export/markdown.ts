@@ -1,13 +1,17 @@
 import { Editor, type JSONContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import { Markdown } from '@tiptap/markdown'
-import { AssetImage } from '../editor/AssetImage'
+import { generateHTML } from '@tiptap/core'
+import { editorExtensions } from '../editor/extensions'
 
-const extensions = [StarterKit, Markdown, AssetImage]
+const extensions = editorExtensions()
 
 export function docToMarkdown(doc: JSONContent): string {
   const ed = new Editor({ extensions, content: doc })
-  const md = ed.getMarkdown()
+  // HTML table blocks retain rich cell content and widths, with Markdown around them.
+  const md = (doc.content ?? []).map((node) => {
+    if (node.type === 'table') return generateHTML({ type: 'doc', content: [node] }, extensions).replace(/\n/g, '&#10;')
+    ed.commands.setContent({ type: 'doc', content: [node] })
+    return ed.getMarkdown().trimEnd()
+  }).join('\n\n')
   ed.destroy()
   return md
 }
@@ -31,8 +35,4 @@ export function mapImages(node: JSONContent, fn: (attrs: Attrs) => Attrs | null)
   return { ...node, content }
 }
 
-export function docToText(node: JSONContent): string {
-  if (node.type === 'text') return node.text ?? ''
-  const parts = (node.content ?? []).map(docToText)
-  return node.type === 'doc' ? parts.join('\n') : parts.join('')
-}
+export { docToText } from '../editor/documentText'
