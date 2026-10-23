@@ -211,6 +211,7 @@ export function NotePane({ note, focusTitle, onBack, onDelete, onExported, focus
             ref={titleRef}
             key={note.id}
             className="note-title"
+            dir="auto"
             rows={1}
             aria-label="Title"
             placeholder="Untitled"

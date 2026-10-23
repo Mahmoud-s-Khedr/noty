@@ -194,13 +194,13 @@ export default function App() {
             <li key={n.id}>
               <button className="note-item" aria-current={n.id === selectedId} onClick={() => openNote(n.id)}>
                 <span className="top">
-                  <span className={'name' + (n.title ? '' : ' untitled')}>
+                  <span dir="auto" className={'name' + (n.title ? '' : ' untitled')}>
                     {n.title ? <Highlight text={n.title} term={term} /> : 'Untitled'}
                   </span>
                   <time dateTime={new Date(n.updatedAt).toISOString()}>{listDate(n.updatedAt)}</time>
                 </span>
                 {n.plainText.trim() && (
-                  <span className="snippet"><Highlight text={snippetFor(n.plainText, term)} term={term} /></span>
+                  <span className="snippet" dir="auto"><Highlight text={snippetFor(n.plainText, term)} term={term} /></span>
                 )}
               </button>
             </li>

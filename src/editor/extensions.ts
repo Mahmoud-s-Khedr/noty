@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { TableKit, TableCell, TableHeader } from '@tiptap/extension-table'
 import { AssetImage } from './AssetImage'
+import { TextDirection } from './TextDirection'
 
 const cellAttributes = (parent: Attributes = {}) => ({
   ...parent,
@@ -16,7 +17,7 @@ const cellAttributes = (parent: Attributes = {}) => ({
 /** The same schema is used for editing, HTML blocks, and Markdown imports. */
 export function editorExtensions() {
   return [
-    StarterKit, Markdown, AssetImage,
+    StarterKit, Markdown, AssetImage, TextDirection,
     TableKit.configure({ table: { resizable: true, cellMinWidth: 80 }, tableCell: false, tableHeader: false }),
     TableCell.extend({ addAttributes() { return cellAttributes(this.parent?.()) } }),
     TableHeader.extend({ addAttributes() { return cellAttributes(this.parent?.()) } }),

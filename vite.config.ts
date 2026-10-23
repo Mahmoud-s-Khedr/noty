@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   build: {
+    // Preserve :dir() selectors: rewriting them to :lang() loses automatic
+    // direction detection in notes whose Arabic and English share a page.
+    cssTarget: ['chrome120', 'edge120', 'firefox128', 'safari17.2'],
     rolldownOptions: {
       output: {
         codeSplitting: {

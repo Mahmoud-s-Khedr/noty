@@ -233,7 +233,7 @@ for (const library of [false, true]) {
     expect(md).toContain('<table')
     expect(md).toContain('colwidth="160"')
     expect(md).toContain('<strong>Bold cell</strong>')
-    expect(md).toContain('<ul>')
+    expect(md).toMatch(/<ul(?:\s[^>]*)?>/)
     expect(md).toContain('src="images/')
     expect(md).toContain('Before table')
     expect(md).toContain('After table')

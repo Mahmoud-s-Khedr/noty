@@ -160,6 +160,7 @@ main.pane { background: var(--page); min-width: 0; min-height: 0; display: flex;
   margin-top: 0.15rem; color: var(--graphite); font-size: 0.8125rem; line-height: 1.4;
   display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
 }
+.note-item :is(.name, .snippet) { text-align: start; }
 .list-empty { padding: 2rem 1.25rem; color: var(--graphite); }
 .list-empty strong { display: block; color: var(--ink); font: 600 1.0625rem var(--serif); margin-bottom: 0.25rem; }
 .list-empty p { margin: 0 0 0.875rem; }
@@ -191,6 +192,7 @@ main.pane { background: var(--page); min-width: 0; min-height: 0; display: flex;
   display: block; width: 100%; border: 0; background: transparent; padding: 0.25rem 0; margin: 0 0 0.5rem;
   font: 600 2.375rem/1.15 var(--serif); letter-spacing: -0.02em; text-wrap: balance;
   resize: none; overflow: hidden; field-sizing: content;
+  text-align: start;
 }
 .note-title::placeholder { color: var(--faint); font-weight: 500; }
 .note-title:focus-visible { outline: none; }
@@ -224,6 +226,7 @@ main.pane { background: var(--page); min-width: 0; min-height: 0; display: flex;
 .ProseMirror { outline: none; min-height: 45vh; font: 400 1.1875rem/1.7 var(--serif); font-optical-sizing: auto; overflow-wrap: break-word; }
 .ProseMirror > * + * { margin-top: 1em; }
 .ProseMirror p { margin: 0; }
+.ProseMirror :is(p, h1, h2, h3, h4, h5, h6, li) { text-align: start; }
 .ProseMirror p + p { margin-top: 1em; }
 .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: var(--faint);
@@ -233,12 +236,19 @@ main.pane { background: var(--page); min-width: 0; min-height: 0; display: flex;
 .ProseMirror h2 { font-size: 1.4375rem; font-weight: 620; }
 .ProseMirror h3 { font-size: 1.1875rem; font-weight: 650; }
 .ProseMirror h1 + *, .ProseMirror h2 + *, .ProseMirror h3 + * { margin-top: 0.5em; }
-.ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; }
+/* dir=auto skips descendants that have their own dir attribute. Containers
+   therefore follow their first paragraph explicitly, so markers and quote
+   borders follow the prose too. Keep both marker gutters for mixed lists. */
+.ProseMirror :is(li, blockquote, td, th)[dir='auto']:has(> :first-child:dir(rtl)),
+.ProseMirror :is(ul, ol)[dir='auto']:has(> li:first-child > :first-child:dir(rtl)) { direction: rtl; }
+.ProseMirror ul, .ProseMirror ol { padding-inline: 1.5em; }
 .ProseMirror li + li { margin-top: 0.25em; }
 .ProseMirror li > p + p { margin-top: 0.5em; }
 .ProseMirror li::marker { color: var(--faint); }
-.ProseMirror blockquote { margin-left: 0; padding: 0.1em 0 0.1em 1.125rem; border-left: 3px solid var(--marker); color: var(--graphite); font-style: italic; }
+.ProseMirror blockquote { margin-inline: 0; padding-block: 0.1em; padding-inline: 1.125rem 0; border-inline-start: 3px solid var(--marker); color: var(--graphite); font-style: italic; }
 .ProseMirror code { font: 0.86em var(--mono); background: var(--hover); padding: 0.12em 0.35em; border-radius: 0.3rem; }
+.ProseMirror code { direction: ltr; unicode-bidi: isolate; }
+.ProseMirror pre { direction: ltr; text-align: left; unicode-bidi: isolate; }
 .ProseMirror pre { background: var(--paper); border: 1px solid var(--hairline); border-radius: 0.625rem; padding: 0.875rem 1rem; overflow-x: auto; line-height: 1.55; }
 .ProseMirror pre code { background: none; padding: 0; font-size: 0.875rem; }
 .ProseMirror hr { border: 0; border-top: 1px solid var(--hairline); margin: 2em 0; }
@@ -317,7 +327,7 @@ dialog.confirm .actions { display: flex; justify-content: flex-end; gap: 0.5rem;
 .ProseMirror td, .ProseMirror th {
   border: 1px solid var(--hairline); padding: 0.5rem 0.625rem;
   vertical-align: top; position: relative; overflow-wrap: anywhere; min-width: 80px;
-  text-align: left; font-weight: inherit;
+  text-align: start; font-weight: inherit;
 }
 .ProseMirror th { background: var(--hover); font-weight: 650; }
 .ProseMirror td > *, .ProseMirror th > * { max-width: 100%; }
